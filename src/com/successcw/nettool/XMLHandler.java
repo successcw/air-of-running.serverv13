@@ -41,6 +41,16 @@ public class XMLHandler extends DefaultHandler {
 			data.setDescription(attributes.getValue("temp"));
 			data.setDescription(attributes.getValue("wind"));
 		}
+		if (qName.equals("night"))
+		{
+			//System.out.println("get foreca");
+			data.setDescription("night");//做一个标记，以便前端来判断
+			data.setDescription(attributes.getValue("text"));
+			//data.setDescription(attributes.getValue("high"));
+			data.setDescription(attributes.getValue("low"));
+			data.setDescription(attributes.getValue("code2"));
+			data.setDescription(attributes.getValue("date"));
+		}
 		if (qName.equals("foreca"))
 		{
 			//System.out.println("get foreca");

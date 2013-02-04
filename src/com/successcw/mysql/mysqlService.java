@@ -1,6 +1,7 @@
 package com.successcw.mysql;
 
 
+import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -99,6 +100,34 @@ public class mysqlService {
 		  }
 		  connect.close();
 		  return returnValue;
+	  }
+	  catch (Exception e){
+		  e.printStackTrace();
+		  return null;
+	  }
+  }
+  public  InputStream getFile() {
+	  InputStream is = null;
+	  try{
+		  //System.out.println("getFromDatabase start");
+		  Class.forName(driverName).newInstance();
+		  connect = DriverManager.getConnection(url+dbName, userName, password);
+		  try{
+			  //Statement st = connect.createStatement();
+			  String SQL = "Select * from download";
+			  PreparedStatement prepStmt = connect.prepareStatement(SQL);
+			  resultSet = prepStmt.executeQuery();
+			  //System.out.println("getFromDatabase process successfully!");
+			  while(resultSet.next()) {
+				  is = resultSet.getBinaryStream(1);
+			  }
+		  }
+		  catch(SQLException s){
+			  System.out.println(s.toString());
+			  return null;
+		  }
+		  connect.close();
+		  return is;
 	  }
 	  catch (Exception e){
 		  e.printStackTrace();

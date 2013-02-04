@@ -1,14 +1,17 @@
 package com.successcw.cloudservice;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Timer;
 
+import javax.servlet.ServletOutputStream;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -306,8 +309,9 @@ public class airofrunning extends HttpServlet {
 		int reqStation;
 		String USAQI = "";
 		String SHAQI = "";
+		mysqlService mysql = new mysqlService();
 
-		if(req.getParameter("city") == null) {
+		if(req.getParameter("city") == null && req.getParameter("download") == null && req.getParameter("checkNewVersion") == null) {
 		
 			resp.setContentType("text/html");
 			resp.setCharacterEncoding("utf-8");
@@ -323,15 +327,43 @@ public class airofrunning extends HttpServlet {
 		    out.println("</p>");
 		    out.println("</body></html>");
 		    out.close();
+		} else if(req.getParameter("checkNewVersion") != null) {
+			resp.setContentType("text/html");
+			resp.setCharacterEncoding("utf-8");
+		    PrintWriter out = resp.getWriter();
+		    out.print("{\"versionCode\":\"4\",\"versionName\":\"1.3\",\"contents\":\"" +
+		    		"1.大幅提升载入速度;2.加入自动更新机制;3.调整出错UI;4.添加“关于”界面\"}");
+		} else if(req.getParameter("download") != null){
 			
+			 //写流文件到前端浏览器
+		    ServletOutputStream out = resp.getOutputStream();
+		    resp.setHeader("Content-disposition", "attachment;filename=AirofRunning.apk");
+		    BufferedInputStream bis = null;
+		    BufferedOutputStream bos = null;
+		    try {
+		      bis = new BufferedInputStream(mysql.getFile());
+		      bos = new BufferedOutputStream(out);
+		      byte[] buff = new byte[2048];
+		      int bytesRead;
+		      while (-1 != (bytesRead = bis.read(buff, 0, buff.length))) {
+		        bos.write(buff, 0, bytesRead);
+		      }
+		    } catch (IOException e) {
+		      throw e;
+		    } finally {
+		      if (bis != null)
+		        bis.close();
+		      if (bos != null)
+		        bos.close();
+		    }
 		} else if(req.getParameter("city") != null && req.getParameter("station") != null) {
+
 			resp.setContentType("text/html");
 			resp.setCharacterEncoding("utf-8");
 			reqCity = Integer.valueOf(req.getParameter("city"));
 			reqStation = Integer.valueOf(req.getParameter("station"));
 		    PrintWriter out = resp.getWriter();
 		    String[] resultSet = null;
-		    mysqlService mysql = new mysqlService();
 
 		    try {
 			    resultSet = mysql.getFromDatabase(reqCity, reqStation);
@@ -610,16 +642,28 @@ public class airofrunning extends HttpServlet {
 							city[i] + "'";
 	    		}
 	    		else
-	    		{	
-					SQL = "UPDATE airQuality SET SHISHITEMPRATURE='" + 
-							WEATHER.get(1) + "',AIRCONDITION='" + 
-							WEATHER.get(3) + "',TEMPRATURE='" + 
-							WEATHER.get(5) + "°/" + WEATHER.get(4) + "°" + "',WIND='" +
-							WEATHER.get(2) + "',WEATHERICON='" +
-							WEATHER.get(6) + "',TEMPRATUREUPDATETIME='" +
-							WEATHER.get(0).split(" ")[1] + "',WEATHERFORECASE='" + 
-							WEATHER + "' WHERE area='" +
-							city[i] + "'";
+	    		{
+	    			if(WEATHER.get(3).equals("night")) {
+	    				SQL = "UPDATE airQuality SET SHISHITEMPRATURE='" +
+								WEATHER.get(1) + "',AIRCONDITION='" +
+								WEATHER.get(4) + "',TEMPRATURE='最低 " +
+								WEATHER.get(5) + "°" + "',WIND='" +
+								WEATHER.get(2) + "',WEATHERICON='" +
+								WEATHER.get(6) + "',TEMPRATUREUPDATETIME='" +
+								WEATHER.get(0).split(" ")[1] + "',WEATHERFORECASE='" +
+								WEATHER + "' WHERE area='" +
+								city[i] + "'";
+	    			} else {
+						SQL = "UPDATE airQuality SET SHISHITEMPRATURE='" +
+								WEATHER.get(1) + "',AIRCONDITION='" +
+								WEATHER.get(3) + "',TEMPRATURE='" +
+								WEATHER.get(5) + "°/" + WEATHER.get(4) + "°" + "',WIND='" +
+								WEATHER.get(2) + "',WEATHERICON='" +
+								WEATHER.get(6) + "',TEMPRATUREUPDATETIME='" +
+								WEATHER.get(0).split(" ")[1] + "',WEATHERFORECASE='" +
+								WEATHER + "' WHERE area='" +
+								city[i] + "'";
+					}
 	    		}
 	    		mysql.executeSQL(SQL);
 	    	}
@@ -833,15 +877,27 @@ public class airofrunning extends HttpServlet {
 	    		}
 	    		else
 	    		{	
-					SQL = "UPDATE airQuality SET SHISHITEMPRATURE='" + 
-							WEATHER.get(1) + "',AIRCONDITION='" + 
-							WEATHER.get(3) + "',TEMPRATURE='" + 
-							WEATHER.get(5) + "°/" + WEATHER.get(4) + "°" + "',WIND='" +
-							WEATHER.get(2) + "',WEATHERICON='" +
-							WEATHER.get(6) + "',TEMPRATUREUPDATETIME='" +
-							WEATHER.get(0).split(" ")[1] + "',WEATHERFORECASE='" + 
-							WEATHER + "' WHERE area='" +
-							city[i] + "'";
+	    			if(WEATHER.get(3).equals("night")) {
+						SQL = "UPDATE airQuality SET SHISHITEMPRATURE='" +
+								WEATHER.get(1) + "',AIRCONDITION='" +
+								WEATHER.get(4) + "',TEMPRATURE='最低 " +
+								WEATHER.get(5) + "°" + "',WIND='" +
+								WEATHER.get(2) + "',WEATHERICON='" +
+								WEATHER.get(6) + "',TEMPRATUREUPDATETIME='" +
+								WEATHER.get(0).split(" ")[1] + "',WEATHERFORECASE='" +
+								WEATHER + "' WHERE area='" +
+								city[i] + "'";
+					} else {
+						SQL = "UPDATE airQuality SET SHISHITEMPRATURE='" +
+								WEATHER.get(1) + "',AIRCONDITION='" +
+								WEATHER.get(3) + "',TEMPRATURE='" +
+								WEATHER.get(5) + "°/" + WEATHER.get(4) + "°" + "',WIND='" +
+								WEATHER.get(2) + "',WEATHERICON='" +
+								WEATHER.get(6) + "',TEMPRATUREUPDATETIME='" +
+								WEATHER.get(0).split(" ")[1] + "',WEATHERFORECASE='" +
+								WEATHER + "' WHERE area='" +
+								city[i] + "'";
+					}
 	    		}
 	    		mysql.executeSQL(SQL);
 	    	}
@@ -870,9 +926,9 @@ public class airofrunning extends HttpServlet {
 		Long intervalTime = Long.parseLong(getInitParameter("intervalTime"));
 		mysqlService mysql = new mysqlService();
 		try {
-			mysql.dropTable();
-			mysql.createTable();
-			initDatabase();
+			//mysql.dropTable();
+			//mysql.createTable();
+			//initDatabase();
 		}
 		catch(Exception e) {
 			System.out.println(e.toString());
