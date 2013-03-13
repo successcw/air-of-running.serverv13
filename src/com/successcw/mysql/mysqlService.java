@@ -47,7 +47,14 @@ public class mysqlService {
 					  "time varchar(20)," +
 					  "station varchar(40)," +
 					  "quality varchar(20)," +
+					  "PrimaryPollutant varchar(20)," +
 					  "PM2_5 float(10,3), " +
+					  "PM10 float(10,3), " +
+					  "SO2 float(10,3), " +
+					  "NO2 float(10,3), " +
+					  "CO float(10,3), " +
+					  "O3_1H float(10,3), " +
+					  "O3_8H float(10,3), " +
 					  "area varchar(20)) CHARSET=utf8";
 			  st.executeUpdate(table);
 			  //System.out.println("Table creation process successfully!");
@@ -62,7 +69,7 @@ public class mysqlService {
 	  }
   }
   public String[] getFromDatabase(int city, int station) {
-	  String [] returnValue = new String[16];
+	  String [] returnValue = new String[23];
 	  try{
 		  //System.out.println("getFromDatabase start");
 		  Class.forName(driverName).newInstance();
@@ -89,9 +96,16 @@ public class mysqlService {
 				  returnValue[10] = String.valueOf(resultSet.getInt("AQI"));
 				  returnValue[11] = resultSet.getString("time");
 				  returnValue[12] = resultSet.getString("station");
-				  returnValue[13] = resultSet.getString("quality");      	
-				  returnValue[14] = String.valueOf(resultSet.getInt("PM2_5"));
-				  returnValue[15] = resultSet.getString("area"); 
+				  returnValue[13] = resultSet.getString("quality");
+				  returnValue[14] = resultSet.getString("PrimaryPollutant");
+				  returnValue[15] = String.valueOf(resultSet.getFloat("PM2_5"));
+				  returnValue[16] = String.valueOf(resultSet.getFloat("PM10"));
+				  returnValue[17] = String.valueOf(resultSet.getFloat("SO2"));
+				  returnValue[18] = String.valueOf(resultSet.getFloat("NO2"));
+				  returnValue[19] = String.valueOf(resultSet.getFloat("CO"));
+				  returnValue[20] = String.valueOf(resultSet.getFloat("O3_1H"));
+				  returnValue[21] = String.valueOf(resultSet.getFloat("O3_8H"));
+				  returnValue[22] = resultSet.getString("area");
 			  }
 		  }
 		  catch(SQLException s){
