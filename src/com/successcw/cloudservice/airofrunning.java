@@ -304,7 +304,7 @@ public class airofrunning extends HttpServlet {
 		int averageAQI = 0;
 		int count = 0;
 		String beijingAQI;
-		String beijingPM25;
+		String beijingTemp;
 		int reqCity;
 		int reqStation;
 		String USAQI = "";
@@ -331,8 +331,8 @@ public class airofrunning extends HttpServlet {
 			resp.setContentType("text/html");
 			resp.setCharacterEncoding("utf-8");
 		    PrintWriter out = resp.getWriter();
-		    out.print("{\"versionCode\":\"4\",\"versionName\":\"1.3\",\"contents\":\"" +
-		    		"1.大幅提升载入速度;2.加入自动更新机制;3.调整出错UI;4.添加“关于”界面\"}");
+		    out.print("{\"versionCode\":\"5\",\"versionName\":\"1.4\",\"contents\":\"" +
+					"1. 给出更自信的建议，全部按照美国标准给出空气污染数据;2.修正PM2.5为空的时候的显示问题;3. 添加详细的污染数据;\"}");
 		} else if(req.getParameter("download") != null){
 			
 			 //写流文件到前端浏览器
@@ -412,14 +412,34 @@ public class airofrunning extends HttpServlet {
 				out.print("\"quality\":\"");
 				out.print(resultSet[13]);
 				out.print("\",");
-				out.print("\"PM2_5\":\"");	      	
+				out.print("\"PrimaryPollutant\":\"");
 				out.print(resultSet[14]);
 				out.print("\",");
-				out.print("\"area\":\"");
+				out.print("\"PM2_5\":\"");
 				out.print(resultSet[15]);
+				out.print("\",");
+				out.print("\"PM10\":\"");
+				out.print(resultSet[16]);
+				out.print("\",");
+				out.print("\"SO2\":\"");
+				out.print(resultSet[17]);
+				out.print("\",");
+				out.print("\"NO2\":\"");
+				out.print(resultSet[18]);
+				out.print("\",");
+				out.print("\"CO\":\"");
+				out.print(resultSet[19]);
+				out.print("\",");
+				out.print("\"O3_1H\":\"");
+				out.print(resultSet[20]);
+				out.print("\",");
+				out.print("\"O3_8H\":\"");
+				out.print(resultSet[21]);
+				out.print("\",");
+				out.print("\"area\":\"");
+				out.print(resultSet[22]);
 				out.print("\"}");
 				out.close();
-				
 			}catch(Exception e){
 				out.println(e.toString());
 			}
@@ -429,25 +449,34 @@ public class airofrunning extends HttpServlet {
 		int averageAQI = 0;
 		int count = 0;
 		String beijingAQI;
-		String beijingPM25;
+		String beijingTemp;
 		int reqCity;
 		int reqStation = 0;
 		String USAQI = "";
 		String SHAQI = "";
+		String SHVALUE = "";
 		String SQL = "";
+		String PrimaryPollutant = "";
+		float PM2_5;
+		float PM10;
+		float SO2;
+		float NO2;
+		float CO;
+		float O3_1H;
+		float O3_8H;
 		mysqlService mysql = new mysqlService();
 
 		Calendar rightNow = Calendar.getInstance();
 		Date time = rightNow.getTime();
-		//System.out.println("start update");
-		//System.out.println(time.toString());
+		System.out.println("start update");
+		System.out.println(time.toString());
 		try {
 			//获取北京空气信息
 			beijingAQI = NetTool.getHtml("http://zx.bjmemc.com.cn/ashx/Data.ashx?Action=GetAQIClose1h", "UTF-8");
 			JSONArray jsonObjRecv = new JSONArray(beijingAQI);			
 			if(beijingAQI == null){
-				SQL = "INSERT INTO airQuality (cityIndex, stationIndex, USAQIVALUE, USAQITIME, averageAQI, AQI, time, station, quality, PM2_5, area) " +
-						"VALUES(1, 0, -9999, '-9999', -9999, -9999, '-9999', '-9999', '-9999', -9999, '北京')";
+				SQL = "INSERT INTO airQuality (cityIndex, stationIndex, USAQIVALUE, USAQITIME, averageAQI, AQI, time, station, quality, PrimaryPollutant, PM2_5, PM10, SO2, NO2, CO, O3_1H, O3_8H, area) " +
+						"VALUES(1, 0, -9999, '-9999', -9999, -9999, '-9999', '-9999', '-9999', '-9999', -9999, -9999, -9999, -9999, -9999, -9999, -9999,'北京')";
 				mysql.executeSQL(SQL);
 			} else {
 				for(int i = 0; i < jsonObjRecv.length(); i++ ) {
@@ -458,38 +487,212 @@ public class airofrunning extends HttpServlet {
 							break;
 						}
 					}
-					beijingPM25 = 
-							NetTool.getHtml("http://zx.bjmemc.com.cn/ashx/Data.ashx?Action=GetChartData_ByStationAndWRWType&StationName="
-									+ beijingStation[reqStation] + "&WRWType=pm2.5","UTF-8");
-					if(beijingPM25 == null) {
-						beijingPM25 = "-9999";
-					} else {										
-						JSONObject jsonobjRecvPM25 = new JSONObject(beijingPM25);
-						int length = jsonobjRecvPM25.getJSONArray("Datas").length();
-						//取最近一个存在的pm2.5值
-						for(int k = length -1; k >= 0; k--) {
-							beijingPM25 = jsonobjRecvPM25.getJSONArray("Datas").getJSONObject(k).get("Value").toString();
-							if(!(beijingPM25.equals("") || beijingPM25.equals("-9999")))
-								break;
-						}
-					}
 					Integer AQI = TryParseInt(jsonObjRecv.getJSONObject(i).getString("AQIValue"));
 					if (AQI == null)
 						AQI = -9999;
-					float PM2_5;
-					try{
-						PM2_5 = Float.parseFloat(beijingPM25);
-					} catch(NumberFormatException e){
-						PM2_5 = -9999;
-					} 
-					SQL = "INSERT INTO airQuality (cityIndex, stationIndex, USAQIVALUE, USAQITIME,averageAQI, AQI, time, station, quality, PM2_5, area) " +
+					PrimaryPollutant = jsonObjRecv.getJSONObject(i).getString("AQIName");
+					if (PrimaryPollutant.equals("PM2.5"))
+						PrimaryPollutant = "PM2_5";
+					PM2_5 = -9999;
+					PM10 = -9999;
+					O3_1H = -9999;
+					O3_8H = -9999;
+					CO = -9999;
+					SO2 = -9999;
+					NO2 = -9999;
+
+					if(PrimaryPollutant.equals("PM2_5"))
+					{
+						//update PM2.5
+						beijingTemp =
+								NetTool.getHtml("http://zx.bjmemc.com.cn/ashx/Data.ashx?Action=GetChartData_ByStationAndWRWType&StationName="
+										+ beijingStation[reqStation] + "&WRWType=pm2.5","UTF-8");
+						if(beijingTemp == null) {
+							beijingTemp = "-9999";
+						} else {
+							JSONObject jsonobjRecvPM25 = new JSONObject(beijingTemp);
+							int length = jsonobjRecvPM25.getJSONArray("Datas").length();
+							//取最近一个存在的pm2.5值
+							for(int k = length -1; k >= 0; k--) {
+								beijingTemp = jsonobjRecvPM25.getJSONArray("Datas").getJSONObject(k).get("Value").toString();
+								if(!(beijingTemp.equals("") || beijingTemp.equals("-9999")))
+									break;
+							}
+						}
+						try{
+							PM2_5 = Float.parseFloat(beijingTemp);
+						} catch(NumberFormatException e){
+							PM2_5 = -9999;
+						}
+					}
+					else
+					{
+						//update PM10
+						beijingTemp =
+								NetTool.getHtml("http://zx.bjmemc.com.cn/ashx/Data.ashx?Action=GetChartData_ByStationAndWRWType&StationName="
+										+ beijingStation[reqStation] + "&WRWType=pm10","UTF-8");
+						if(beijingTemp == null) {
+							beijingTemp = "-9999";
+						} else {
+							JSONObject jsonobjRecvPM25 = new JSONObject(beijingTemp);
+							int length = jsonobjRecvPM25.getJSONArray("Datas").length();
+							//取最近一个存在的pm10值
+							for(int k = length -1; k >= 0; k--) {
+								beijingTemp = jsonobjRecvPM25.getJSONArray("Datas").getJSONObject(k).get("Value").toString();
+								if(!(beijingTemp.equals("") || beijingTemp.equals("-9999")))
+									break;
+							}
+						}
+						try{
+							PM10 = Float.parseFloat(beijingTemp);
+						} catch(NumberFormatException e){
+							PM10 = -9999;
+						}
+					}
+
+//					暂时不获取北京的详细数据，因为初始化的时候按现在这种方法经常会出现网络问题，放在update中去实现
+//					//update PM2.5
+//					beijingTemp =
+//							NetTool.getHtml("http://zx.bjmemc.com.cn/ashx/Data.ashx?Action=GetChartData_ByStationAndWRWType&StationName="
+//									+ beijingStation[reqStation] + "&WRWType=pm2.5","UTF-8");
+//					if(beijingTemp == null) {
+//						beijingTemp = "-9999";
+//					} else {
+//						JSONObject jsonobjRecvPM25 = new JSONObject(beijingTemp);
+//						int length = jsonobjRecvPM25.getJSONArray("Datas").length();
+//						//取最近一个存在的pm2.5值
+//						for(int k = length -1; k >= 0; k--) {
+//							beijingTemp = jsonobjRecvPM25.getJSONArray("Datas").getJSONObject(k).get("Value").toString();
+//							if(!(beijingTemp.equals("") || beijingTemp.equals("-9999")))
+//								break;
+//						}
+//					}
+//					try{
+//						PM2_5 = Float.parseFloat(beijingTemp);
+//					} catch(NumberFormatException e){
+//						PM2_5 = -9999;
+//					}
+//					//update PM10
+//					beijingTemp =
+//							NetTool.getHtml("http://zx.bjmemc.com.cn/ashx/Data.ashx?Action=GetChartData_ByStationAndWRWType&StationName="
+//									+ beijingStation[reqStation] + "&WRWType=pm10","UTF-8");
+//					if(beijingTemp == null) {
+//						beijingTemp = "-9999";
+//					} else {
+//						JSONObject jsonobjRecvPM25 = new JSONObject(beijingTemp);
+//						int length = jsonobjRecvPM25.getJSONArray("Datas").length();
+//						//取最近一个存在的pm10值
+//						for(int k = length -1; k >= 0; k--) {
+//							beijingTemp = jsonobjRecvPM25.getJSONArray("Datas").getJSONObject(k).get("Value").toString();
+//							if(!(beijingTemp.equals("") || beijingTemp.equals("-9999")))
+//								break;
+//						}
+//					}
+//					try{
+//						PM10 = Float.parseFloat(beijingTemp);
+//					} catch(NumberFormatException e){
+//						PM10 = -9999;
+//					}
+//					//update SO2
+//					beijingTemp =
+//							NetTool.getHtml("http://zx.bjmemc.com.cn/ashx/Data.ashx?Action=GetChartData_ByStationAndWRWType&StationName="
+//									+ beijingStation[reqStation] + "&WRWType=SO2","UTF-8");
+//					if(beijingTemp == null) {
+//						beijingTemp = "-9999";
+//					} else {
+//						JSONObject jsonobjRecvPM25 = new JSONObject(beijingTemp);
+//						int length = jsonobjRecvPM25.getJSONArray("Datas").length();
+//						//取最近一个存在的SO2值
+//						for(int k = length -1; k >= 0; k--) {
+//							beijingTemp = jsonobjRecvPM25.getJSONArray("Datas").getJSONObject(k).get("Value").toString();
+//							if(!(beijingTemp.equals("") || beijingTemp.equals("-9999")))
+//								break;
+//						}
+//					}
+//					try{
+//						SO2 = Float.parseFloat(beijingTemp);
+//					} catch(NumberFormatException e){
+//						SO2 = -9999;
+//					}
+//					//update NO2
+//					beijingTemp =
+//							NetTool.getHtml("http://zx.bjmemc.com.cn/ashx/Data.ashx?Action=GetChartData_ByStationAndWRWType&StationName="
+//									+ beijingStation[reqStation] + "&WRWType=NO2","UTF-8");
+//					if(beijingTemp == null) {
+//						beijingTemp = "-9999";
+//					} else {
+//						JSONObject jsonobjRecvPM25 = new JSONObject(beijingTemp);
+//						int length = jsonobjRecvPM25.getJSONArray("Datas").length();
+//						//取最近一个存在的SO2值
+//						for(int k = length -1; k >= 0; k--) {
+//							beijingTemp = jsonobjRecvPM25.getJSONArray("Datas").getJSONObject(k).get("Value").toString();
+//							if(!(beijingTemp.equals("") || beijingTemp.equals("-9999")))
+//								break;
+//						}
+//					}
+//					try{
+//						NO2 = Float.parseFloat(beijingTemp);
+//					} catch(NumberFormatException e){
+//						NO2 = -9999;
+//					}
+//					//update CO
+//					beijingTemp =
+//							NetTool.getHtml("http://zx.bjmemc.com.cn/ashx/Data.ashx?Action=GetChartData_ByStationAndWRWType&StationName="
+//									+ beijingStation[reqStation] + "&WRWType=CO","UTF-8");
+//					if(beijingTemp == null) {
+//						beijingTemp = "-9999";
+//					} else {
+//						JSONObject jsonobjRecvPM25 = new JSONObject(beijingTemp);
+//						int length = jsonobjRecvPM25.getJSONArray("Datas").length();
+//						//取最近一个存在的CO值
+//						for(int k = length -1; k >= 0; k--) {
+//							beijingTemp = jsonobjRecvPM25.getJSONArray("Datas").getJSONObject(k).get("Value").toString();
+//							if(!(beijingTemp.equals("") || beijingTemp.equals("-9999")))
+//								break;
+//						}
+//					}
+//					try{
+//						CO = Float.parseFloat(beijingTemp);
+//					} catch(NumberFormatException e){
+//						CO = -9999;
+//					}
+//					//update O3_1H
+//					beijingTemp =
+//							NetTool.getHtml("http://zx.bjmemc.com.cn/ashx/Data.ashx?Action=GetChartData_ByStationAndWRWType&StationName="
+//									+ beijingStation[reqStation] + "&WRWType=O3","UTF-8");
+//					if(beijingTemp == null) {
+//						beijingTemp = "-9999";
+//					} else {
+//						JSONObject jsonobjRecvPM25 = new JSONObject(beijingTemp);
+//						int length = jsonobjRecvPM25.getJSONArray("Datas").length();
+//						//取最近一个存在的O3值
+//						for(int k = length -1; k >= 0; k--) {
+//							beijingTemp = jsonobjRecvPM25.getJSONArray("Datas").getJSONObject(k).get("Value").toString();
+//							if(!(beijingTemp.equals("") || beijingTemp.equals("-9999")))
+//								break;
+//						}
+//					}
+//					try{
+//						O3 = Float.parseFloat(beijingTemp);
+//					} catch(NumberFormatException e){
+//						O3 = -9999;
+//					}
+
+					SQL = "INSERT INTO airQuality (cityIndex, stationIndex, USAQIVALUE, USAQITIME,averageAQI, AQI, time, station, quality, PrimaryPollutant, PM2_5, PM10, SO2, NO2, CO, O3_1H, O3_8H, area) " +
 							"VALUES(1, " + 
 							i + ",-9999, '-9999', -9999," +
 							AQI + "," + "'" +
 							jsonObjRecv.getJSONObject(i).getString("Time").split(" ")[1] + "'" + "," + "'" +
 							jsonObjRecv.getJSONObject(i).getString("StationName") + "'" + "," + "'" +
-							jsonObjRecv.getJSONObject(i).getString("Quality")  + "'" + "," +
+							jsonObjRecv.getJSONObject(i).getString("Quality")  + "'" + "," + "'" +
+							PrimaryPollutant + "'" + "," +
 							PM2_5 + "," +
+							PM10 + "," +
+							SO2 + "," +
+							NO2 + "," +
+							CO + "," +
+							O3_1H + "," +
+							O3_8H + "," +
 							"'北京')";
 					mysql.executeSQL(SQL);
 					
@@ -498,32 +701,93 @@ public class airofrunning extends HttpServlet {
 			//获取上海信息
 			for (int i = 0; i < SHStationValue.length; i++) {
 				SHAQI= NetTool.getSHAQI("GetSiteAQIData",SHStationValue[i]);
-				if(SHAQI == null){
-					SQL = "INSERT INTO airQuality (cityIndex, stationIndex,averageAQI, AQI, time, station, quality, PM2_5, area) " +
-							"VALUES(20, 0 , -9999, '-9999', -9999, -9999, '-9999', '-9999', '-9999', -9999, '上海')";
+				SHVALUE= NetTool.getSHAQI("GetSiteValueData",SHStationValue[i]);
+				if(SHAQI == null || SHVALUE == null ){
+					SQL = "INSERT INTO airQuality (cityIndex, stationIndex, USAQIVALUE, USAQITIME, averageAQI, AQI, time, station, quality, PrimaryPollutant, PM2_5, PM10, SO2, NO2, CO, O3_1H, O3_8H, area) " +
+							"VALUES(20, 0, -9999, '-9999', -9999, -9999, '-9999', '-9999', '-9999', '-9999', -9999, -9999, -9999, -9999, -9999, -9999, -9999, '上海')";
 				}
 				else {
 					SHAQI = SHAQI.replace("$", " ").replace("#", " ").replace("*"," ");
 					String []SHAQIArray = SHAQI.split(" ");
+					SHVALUE = SHVALUE.replace("$", " ").replace("#", " ").replace("*"," ");
+					String []SHVALUEArray = SHVALUE.split(" ");
+					PrimaryPollutant = "-9999";
+					//这里写成15会有问题，有时候服务器发过来的数据没有这么长
+//					PrimaryPollutant = SHAQIArray[15];
+//					if (PrimaryPollutant.equals("PM2.5"))
+//						PrimaryPollutant = "PM2_5";
 					
+					PM2_5 = -9999;
+					PM10 = -9999;
+					O3_1H = -9999;
+					O3_8H = -9999;
+					CO = -9999;
+					SO2 = -9999;
+					NO2 = -9999;
 					Integer AQI = TryParseInt(SHAQIArray[1]);
 					if (AQI == null)
 						AQI = -9999;
-					float PM2_5;
-					try{
-						PM2_5 = Float.parseFloat(SHAQIArray[SHAQIArray.length - 6]);
-					} catch(NumberFormatException e){
-						PM2_5 = -9999;
-					} 
-										
-					SQL = "INSERT INTO airQuality (cityIndex, stationIndex, USAQIVALUE, USAQITIME,averageAQI, AQI, time, station, quality, PM2_5, area) " +
+
+					for (int k = 0; k < SHVALUEArray.length; k++) {
+						if(SHVALUEArray[k].equals("PM2.5_1hr")) {
+							try{
+								PM2_5 = Float.parseFloat(SHVALUEArray[k+1]);
+							} catch(NumberFormatException e){
+								PM2_5 = -9999;
+							}
+						}else if(SHVALUEArray[k].equals("O3_1hr")) {
+							try{
+								O3_1H = Float.parseFloat(SHVALUEArray[k+1]);
+							} catch(NumberFormatException e){
+								O3_1H = -9999;
+							}
+						}else if(SHVALUEArray[k].equals("O3_8hr")) {
+							try{
+								O3_8H = Float.parseFloat(SHVALUEArray[k+1]);
+							} catch(NumberFormatException e){
+								O3_8H = -9999;
+							}
+						}else if(SHVALUEArray[k].equals("CO_1hr")) {
+							try{
+								CO = Float.parseFloat(SHVALUEArray[k+1]);
+							} catch(NumberFormatException e){
+								CO = -9999;
+							}
+						}else if(SHVALUEArray[k].equals("PM10_1hr")) {
+							try{
+								PM10 = Float.parseFloat(SHVALUEArray[k+1]);
+							} catch(NumberFormatException e){
+								PM10 = -9999;
+							}
+						}else if(SHVALUEArray[k].equals("SO2_1hr")) {
+							try{
+								SO2 = Float.parseFloat(SHVALUEArray[k+1]);
+							} catch(NumberFormatException e){
+								SO2 = -9999;
+							}
+						}else if(SHVALUEArray[k].equals("NO2_1hr")) {
+							try{
+								NO2 = Float.parseFloat(SHVALUEArray[k+1]);
+							} catch(NumberFormatException e){
+								NO2 = -9999;
+							}
+						}
+					}
+					SQL = "INSERT INTO airQuality (cityIndex, stationIndex, USAQIVALUE, USAQITIME, averageAQI, AQI, time, station, quality, PrimaryPollutant, PM2_5, PM10, SO2, NO2, CO, O3_1H, O3_8H, area) " +
 							"VALUES(20, " + 
 							i + ",-9999, '-9999', -9999," +
 							AQI + "," + "'" +
 							SHAQIArray[SHAQIArray.length - 1].toString() + "'" + "," + "'" +
 							SHStation[i] + "'" + "," + "'" +
-							SHAQIArray[SHAQIArray.length - 3].toString()  + "'" + "," +
+							SHAQIArray[SHAQIArray.length - 3].toString()  + "'" + "," + "'" +
+							PrimaryPollutant + "'" + "," +
 							PM2_5 + "," +
+							PM10 + "," +
+							SO2 + "," +
+							NO2 + "," +
+							CO + "," +
+							O3_1H + "," +
+							O3_8H + "," +
 							"'上海')";
 				}
 				mysql.executeSQL(SQL);
@@ -552,16 +816,49 @@ public class airofrunning extends HttpServlet {
 		
 					for(int j = 0; j < strList.size(); j++) {
 						Integer AQI = TryParseInt(strList.get(j).getAQI().getValue());
+						PrimaryPollutant = strList.get(j).getPrimaryPollutant().getValue();
+						if (PrimaryPollutant.equals("PM2.5"))
+							PrimaryPollutant = "PM2_5";
+
 						if (AQI == null)
 							AQI = -9999;
-						float PM2_5;
 						try{
 							PM2_5 = Float.parseFloat(strList.get(j).getPM25().getValue());
 						} catch(NumberFormatException e){
 							PM2_5 = -9999;
 						}
+						try{
+							PM10 = Float.parseFloat(strList.get(j).getPM10().getValue());
+						} catch(NumberFormatException e){
+							PM10 = -9999;
+						}
+						try{
+							SO2 = Float.parseFloat(strList.get(j).getSO2().getValue());
+						} catch(NumberFormatException e){
+							SO2 = -9999;
+						}
+						try{
+							NO2 = Float.parseFloat(strList.get(j).getNO2().getValue());
+						} catch(NumberFormatException e){
+							NO2 = -9999;
+						}
+						try{
+							CO = Float.parseFloat(strList.get(j).getCO().getValue());
+						} catch(NumberFormatException e){
+							CO = -9999;
+						}
+						try{
+							O3_1H = Float.parseFloat(strList.get(j).getO3().getValue());
+						} catch(NumberFormatException e){
+							O3_1H = -9999;
+						}
+						try{
+							O3_8H = Float.parseFloat(strList.get(j).getO38H().getValue());
+						} catch(NumberFormatException e){
+							O3_8H = -9999;
+						}
 						int temp = i + 1;
-						SQL = "INSERT INTO airQuality (cityIndex, stationIndex, USAQIVALUE, USAQITIME, averageAQI, AQI, time, station, quality, PM2_5, area) " +
+						SQL = "INSERT INTO airQuality (cityIndex, stationIndex, USAQIVALUE, USAQITIME, averageAQI, AQI, time, station, quality, PrimaryPollutant, PM2_5, PM10, SO2, NO2, CO, O3_1H, O3_8H, area) " +
 								"VALUES(" +
 								temp + "," +
 								j + ",-9999, '-9999'," +
@@ -569,8 +866,15 @@ public class airofrunning extends HttpServlet {
 								AQI + "," + "'" +
 								strList.get(j).getTimePoint().toString().split("T")[1] + "'" + "," + "'" +
 								strList.get(j).getPositionName().getValue() + "'" + "," + "'" +
-								strList.get(j).getQuality().getValue()  + "'" + "," +
-								PM2_5 + "," + "'" +
+								strList.get(j).getQuality().getValue()  + "'" + "," + "'" +
+								PrimaryPollutant + "'" + "," +
+								PM2_5 + "," +
+								PM10 + "," +
+								SO2 + "," +
+								NO2 + "," +
+								CO + "," +
+								O3_1H + "," +
+								O3_8H + "," + "'" +
 								strList.get(j).getArea().getValue() + "')";
 						mysql.executeSQL(SQL);
 					}
@@ -588,8 +892,11 @@ public class airofrunning extends HttpServlet {
 			}
 			else {
 				JSONObject jsonObjUSAQI = new JSONObject(USAQI);
+				Integer AQI = TryParseInt(jsonObjUSAQI.getString("aqi"));
+				if (AQI == null)
+					AQI = -9999;
 				SQL = "UPDATE airQuality SET USAQIVALUE=" +
-						Integer.valueOf(jsonObjUSAQI.getString("aqi")) + ",USAQITIME='" + 
+						AQI + ",USAQITIME='" +
 						jsonObjUSAQI.getJSONObject("time").getString("u").split(" ")[1] + "'" + 
 						"WHERE area='北京'";
 				mysql.executeSQL(SQL);
@@ -600,8 +907,11 @@ public class airofrunning extends HttpServlet {
 			}
 			else {
 				JSONObject jsonObjUSAQI = new JSONObject(USAQI);
+				Integer AQI = TryParseInt(jsonObjUSAQI.getString("aqi"));
+				if (AQI == null)
+					AQI = -9999;
 				SQL = "UPDATE airQuality SET USAQIVALUE=" +
-						Integer.valueOf(jsonObjUSAQI.getString("aqi")) + ",USAQITIME='" + 
+						AQI + ",USAQITIME='" +
 						jsonObjUSAQI.getJSONObject("time").getString("u").split(" ")[1] + "'" + 
 						"WHERE area='上海'";
 				mysql.executeSQL(SQL);
@@ -612,8 +922,11 @@ public class airofrunning extends HttpServlet {
 			}
 			else {
 				JSONObject jsonObjUSAQI = new JSONObject(USAQI);
+				Integer AQI = TryParseInt(jsonObjUSAQI.getString("aqi"));
+				if (AQI == null)
+					AQI = -9999;
 				SQL = "UPDATE airQuality SET USAQIVALUE=" +
-						Integer.valueOf(jsonObjUSAQI.getString("aqi")) + ",USAQITIME='" + 
+						AQI + ",USAQITIME='" +
 						jsonObjUSAQI.getJSONObject("time").getString("u").split(" ")[1] + "'" + 
 						"WHERE area='广州'";
 				mysql.executeSQL(SQL);
@@ -624,8 +937,11 @@ public class airofrunning extends HttpServlet {
 			}
 			else {
 				JSONObject jsonObjUSAQI = new JSONObject(USAQI);
+				Integer AQI = TryParseInt(jsonObjUSAQI.getString("aqi"));
+				if (AQI == null)
+					AQI = -9999;
 				SQL = "UPDATE airQuality SET USAQIVALUE=" +
-						Integer.valueOf(jsonObjUSAQI.getString("aqi")) + ",USAQITIME='" + 
+						AQI + ",USAQITIME='" +
 						jsonObjUSAQI.getJSONObject("time").getString("u").split(" ")[1] + "'" + 
 						"WHERE area='成都'";
 				mysql.executeSQL(SQL);
@@ -671,18 +987,29 @@ public class airofrunning extends HttpServlet {
 		}catch(Exception e){
 			System.out.println(e.toString());
 		}
+		System.out.println("update done");
+		System.out.println(time.toString());
     }
 
     public void updateDatabase() {
 		int averageAQI = 0;
 		int count = 0;
 		String beijingAQI;
-		String beijingPM25;
+		String beijingTemp;
 		int reqCity;
 		int reqStation = 0;
 		String USAQI = "";
 		String SHAQI = "";
 		String SQL = "";
+		String SHVALUE = "";
+		String PrimaryPollutant = "";
+		float PM2_5;
+		float PM10;
+		float SO2;
+		float NO2;
+		float CO;
+		float O3_1H;
+		float O3_8H;
 		mysqlService mysql = new mysqlService();
 
 		Calendar rightNow = Calendar.getInstance();
@@ -706,36 +1033,218 @@ public class airofrunning extends HttpServlet {
 							break;
 						}
 					}
-					beijingPM25 = 
-							NetTool.getHtml("http://zx.bjmemc.com.cn/ashx/Data.ashx?Action=GetChartData_ByStationAndWRWType&StationName="
-									+ beijingStation[reqStation] + "&WRWType=pm2.5","UTF-8");
-					if(beijingPM25 == null) {
-						beijingPM25 = "-9999";
-					} else {										
-						JSONObject jsonobjRecvPM25 = new JSONObject(beijingPM25);
-						int length = jsonobjRecvPM25.getJSONArray("Datas").length();
-						//取最近一个存在的pm2.5值
-						for(int k = length -1; k >= 0; k--) {
-							beijingPM25 = jsonobjRecvPM25.getJSONArray("Datas").getJSONObject(k).get("Value").toString();
-							if(!(beijingPM25.equals("") || beijingPM25.equals("-9999")))
-								break;
-						}
-					}
 					Integer AQI = TryParseInt(jsonObjRecv.getJSONObject(i).getString("AQIValue"));
 					if (AQI == null)
 						AQI = -9999;
-					float PM2_5;
+					PrimaryPollutant = jsonObjRecv.getJSONObject(i).getString("AQIName");
+					if (PrimaryPollutant.equals("PM2.5"))
+						PrimaryPollutant = "PM2_5";
+					PM2_5 = -9999;
+					PM10 = -9999;
+					O3_1H = -9999;
+					O3_8H = -9999;
+					CO = -9999;
+					SO2 = -9999;
+					NO2 = -9999;
+
+//					if(PrimaryPollutant.equals("PM2_5"))
+//					{
+//						//update PM2.5
+//						beijingTemp =
+//								NetTool.getHtml("http://zx.bjmemc.com.cn/ashx/Data.ashx?Action=GetChartData_ByStationAndWRWType&StationName="
+//										+ beijingStation[reqStation] + "&WRWType=pm2.5","UTF-8");
+//						if(beijingTemp == null) {
+//							beijingTemp = "-9999";
+//						} else {
+//							JSONObject jsonobjRecvPM25 = new JSONObject(beijingTemp);
+//							int length = jsonobjRecvPM25.getJSONArray("Datas").length();
+//							//取最近一个存在的pm2.5值
+//							for(int k = length -1; k >= 0; k--) {
+//								beijingTemp = jsonobjRecvPM25.getJSONArray("Datas").getJSONObject(k).get("Value").toString();
+//								if(!(beijingTemp.equals("") || beijingTemp.equals("-9999")))
+//									break;
+//							}
+//						}
+//						try{
+//							PM2_5 = Float.parseFloat(beijingTemp);
+//						} catch(NumberFormatException e){
+//							PM2_5 = -9999;
+//						}
+//					}
+//					else
+//					{
+//						//update PM10
+//						beijingTemp =
+//								NetTool.getHtml("http://zx.bjmemc.com.cn/ashx/Data.ashx?Action=GetChartData_ByStationAndWRWType&StationName="
+//										+ beijingStation[reqStation] + "&WRWType=pm10","UTF-8");
+//						if(beijingTemp == null) {
+//							beijingTemp = "-9999";
+//						} else {
+//							JSONObject jsonobjRecvPM25 = new JSONObject(beijingTemp);
+//							int length = jsonobjRecvPM25.getJSONArray("Datas").length();
+//							//取最近一个存在的pm10值
+//							for(int k = length -1; k >= 0; k--) {
+//								beijingTemp = jsonobjRecvPM25.getJSONArray("Datas").getJSONObject(k).get("Value").toString();
+//								if(!(beijingTemp.equals("") || beijingTemp.equals("-9999")))
+//									break;
+//							}
+//						}
+//						try{
+//							PM10 = Float.parseFloat(beijingTemp);
+//						} catch(NumberFormatException e){
+//							PM10 = -9999;
+//						}
+//					}
+					//update PM2.5
+					beijingTemp =
+							NetTool.getHtml("http://zx.bjmemc.com.cn/ashx/Data.ashx?Action=GetChartData_ByStationAndWRWType&StationName="
+									+ beijingStation[reqStation] + "&WRWType=pm2.5","UTF-8");
+					if(beijingTemp == null) {
+						beijingTemp = "-9999";
+					} else {										
+						JSONObject jsonobjRecvPM25 = new JSONObject(beijingTemp);
+						int length = jsonobjRecvPM25.getJSONArray("Datas").length();
+						//取最近一个存在的pm2.5值
+						for(int k = length -1; k >= 0; k--) {
+							beijingTemp = jsonobjRecvPM25.getJSONArray("Datas").getJSONObject(k).get("Value").toString();
+							if(!(beijingTemp.equals("") || beijingTemp.equals("-9999")))
+								break;
+						}
+					}
 					try{
-						PM2_5 = Float.parseFloat(beijingPM25);
+						PM2_5 = Float.parseFloat(beijingTemp);
 					} catch(NumberFormatException e){
 						PM2_5 = -9999;
-					} 
+					}
+					//System.out.println(PM2_5);
+					//update PM10
+					beijingTemp =
+							NetTool.getHtml("http://zx.bjmemc.com.cn/ashx/Data.ashx?Action=GetChartData_ByStationAndWRWType&StationName="
+									+ beijingStation[reqStation] + "&WRWType=pm10","UTF-8");
+					if(beijingTemp == null) {
+						beijingTemp = "-9999";
+					} else {
+						JSONObject jsonobjRecvPM25 = new JSONObject(beijingTemp);
+						int length = jsonobjRecvPM25.getJSONArray("Datas").length();
+						//取最近一个存在的pm10值
+						for(int k = length -1; k >= 0; k--) {
+							beijingTemp = jsonobjRecvPM25.getJSONArray("Datas").getJSONObject(k).get("Value").toString();
+							if(!(beijingTemp.equals("") || beijingTemp.equals("-9999")))
+								break;
+						}
+					}
+					try{
+						PM10 = Float.parseFloat(beijingTemp);
+					} catch(NumberFormatException e){
+						PM10 = -9999;
+					}
+					//System.out.println(PM10);
+					//update SO2
+					beijingTemp =
+							NetTool.getHtml("http://zx.bjmemc.com.cn/ashx/Data.ashx?Action=GetChartData_ByStationAndWRWType&StationName="
+									+ beijingStation[reqStation] + "&WRWType=SO2","UTF-8");
+					if(beijingTemp == null) {
+						beijingTemp = "-9999";
+					} else {
+						JSONObject jsonobjRecvPM25 = new JSONObject(beijingTemp);
+						int length = jsonobjRecvPM25.getJSONArray("Datas").length();
+						//取最近一个存在的SO2值
+						for(int k = length -1; k >= 0; k--) {
+							beijingTemp = jsonobjRecvPM25.getJSONArray("Datas").getJSONObject(k).get("Value").toString();
+							if(!(beijingTemp.equals("") || beijingTemp.equals("-9999")))
+								break;
+						}
+					}
+					try{
+						SO2 = Float.parseFloat(beijingTemp);
+					} catch(NumberFormatException e){
+						SO2 = -9999;
+					}
+					//System.out.println(SO2);
+					//update NO2
+					beijingTemp =
+							NetTool.getHtml("http://zx.bjmemc.com.cn/ashx/Data.ashx?Action=GetChartData_ByStationAndWRWType&StationName="
+									+ beijingStation[reqStation] + "&WRWType=NO2","UTF-8");
+					if(beijingTemp == null) {
+						beijingTemp = "-9999";
+					} else {
+						JSONObject jsonobjRecvPM25 = new JSONObject(beijingTemp);
+						int length = jsonobjRecvPM25.getJSONArray("Datas").length();
+						//取最近一个存在的SO2值
+						for(int k = length -1; k >= 0; k--) {
+							beijingTemp = jsonobjRecvPM25.getJSONArray("Datas").getJSONObject(k).get("Value").toString();
+							if(!(beijingTemp.equals("") || beijingTemp.equals("-9999")))
+								break;
+						}
+					}
+					try{
+						NO2 = Float.parseFloat(beijingTemp);
+					} catch(NumberFormatException e){
+						NO2 = -9999;
+					}
+					//System.out.println(NO2);
+					//update CO
+					beijingTemp =
+							NetTool.getHtml("http://zx.bjmemc.com.cn/ashx/Data.ashx?Action=GetChartData_ByStationAndWRWType&StationName="
+									+ beijingStation[reqStation] + "&WRWType=CO","UTF-8");
+					if(beijingTemp == null) {
+						beijingTemp = "-9999";
+					} else {
+						JSONObject jsonobjRecvPM25 = new JSONObject(beijingTemp);
+						int length = jsonobjRecvPM25.getJSONArray("Datas").length();
+						//取最近一个存在的CO值
+						for(int k = length -1; k >= 0; k--) {
+							beijingTemp = jsonobjRecvPM25.getJSONArray("Datas").getJSONObject(k).get("Value").toString();
+							if(!(beijingTemp.equals("") || beijingTemp.equals("-9999")))
+								break;
+						}
+					}
+					try{
+						CO = Float.parseFloat(beijingTemp);
+					} catch(NumberFormatException e){
+						CO = -9999;
+					}
+					//System.out.println(CO);
+					//update O3_1H
+					beijingTemp =
+							NetTool.getHtml("http://zx.bjmemc.com.cn/ashx/Data.ashx?Action=GetChartData_ByStationAndWRWType&StationName="
+									+ beijingStation[reqStation] + "&WRWType=O3","UTF-8");
+					if(beijingTemp == null) {
+						beijingTemp = "-9999";
+					} else {
+						JSONObject jsonobjRecvPM25 = new JSONObject(beijingTemp);
+						int length = jsonobjRecvPM25.getJSONArray("Datas").length();
+						//取最近一个存在的CO值
+						for(int k = length -1; k >= 0; k--) {
+							beijingTemp = jsonobjRecvPM25.getJSONArray("Datas").getJSONObject(k).get("Value").toString();
+							if(!(beijingTemp.equals("") || beijingTemp.equals("-9999")))
+								break;
+						}
+					}
+					try{
+						O3_1H = Float.parseFloat(beijingTemp);
+					} catch(NumberFormatException e){
+						O3_1H = -9999;
+					}
+
+					PrimaryPollutant = jsonObjRecv.getJSONObject(i).getString("AQIName");
+					if (PrimaryPollutant.equals("PM2.5"))
+						PrimaryPollutant = "PM2_5";
 					
 					SQL = "UPDATE airQuality SET AQI=" + AQI +
 							",time='" + jsonObjRecv.getJSONObject(i).getString("Time").split(" ")[1] + "'" + "," +
 							"station='" + jsonObjRecv.getJSONObject(i).getString("StationName") + "'" + "," +
 							"quality='" + jsonObjRecv.getJSONObject(i).getString("Quality")  + "'" + "," +
-							"PM2_5=" + PM2_5 + " WHERE cityIndex=1 AND stationIndex=" + i;
+							"PrimaryPollutant='" + PrimaryPollutant + "'" + "," +
+							"PM2_5=" + PM2_5 + "," +
+							"PM10=" + PM10 + "," +
+							"SO2=" + SO2 + "," +
+							"NO2=" + NO2 + "," +
+							"CO=" + CO + "," +
+							"O3_1H=" + O3_1H + "," +
+							"O3_8H=" + O3_8H +
+							" WHERE cityIndex=1 AND stationIndex=" + i;
+					//System.out.println(SQL);
 					mysql.executeSQL(SQL);
 					
 				}		
@@ -743,28 +1252,89 @@ public class airofrunning extends HttpServlet {
 			//获取上海信息
 			for (int i = 0; i < SHStationValue.length; i++) {
 				SHAQI= NetTool.getSHAQI("GetSiteAQIData",SHStationValue[i]);
-				if(SHAQI == null){
+				SHVALUE= NetTool.getSHAQI("GetSiteValueData",SHStationValue[i]);
+				if(SHAQI == null || SHVALUE == null ){
 					//do nothing here
 				}
 				else {
 					SHAQI = SHAQI.replace("$", " ").replace("#", " ").replace("*"," ");
 					String []SHAQIArray = SHAQI.split(" ");
+					SHVALUE = SHVALUE.replace("$", " ").replace("#", " ").replace("*"," ");
+					String []SHVALUEArray = SHVALUE.split(" ");
+					PrimaryPollutant = SHAQIArray[15];
+					if (PrimaryPollutant.equals("PM2.5"))
+						PrimaryPollutant = "PM2_5";
 					
+					PM2_5 = -9999;
+					PM10 = -9999;
+					O3_1H = -9999;
+					O3_8H = -9999;
+					CO = -9999;
+					SO2 = -9999;
+					NO2 = -9999;
 					Integer AQI = TryParseInt(SHAQIArray[1]);
 					if (AQI == null)
 						AQI = -9999;
-					float PM2_5;
-					try{
-						PM2_5 = Float.parseFloat(SHAQIArray[SHAQIArray.length - 6]);
-					} catch(NumberFormatException e){
-						PM2_5 = -9999;
-					} 
+
+					for (int k = 0; k < SHVALUEArray.length; k++) {
+						if(SHVALUEArray[k].equals("PM2.5_1hr")) {
+							try{
+								PM2_5 = Float.parseFloat(SHVALUEArray[k+1]);
+							} catch(NumberFormatException e){
+								PM2_5 = -9999;
+							}
+						}else if(SHVALUEArray[k].equals("O3_1hr")) {
+							try{
+								O3_1H = Float.parseFloat(SHVALUEArray[k+1]);
+							} catch(NumberFormatException e){
+								O3_1H = -9999;
+							}
+						}else if(SHVALUEArray[k].equals("O3_8hr")) {
+							try{
+								O3_8H = Float.parseFloat(SHVALUEArray[k+1]);
+							} catch(NumberFormatException e){
+								O3_8H = -9999;
+							}
+						}else if(SHVALUEArray[k].equals("CO_1hr")) {
+							try{
+								CO = Float.parseFloat(SHVALUEArray[k+1]);
+							} catch(NumberFormatException e){
+								CO = -9999;
+							}
+						}else if(SHVALUEArray[k].equals("PM10_1hr")) {
+							try{
+								PM10 = Float.parseFloat(SHVALUEArray[k+1]);
+							} catch(NumberFormatException e){
+								PM10 = -9999;
+							}
+						}else if(SHVALUEArray[k].equals("SO2_1hr")) {
+							try{
+								SO2 = Float.parseFloat(SHVALUEArray[k+1]);
+							} catch(NumberFormatException e){
+								SO2 = -9999;
+							}
+						}else if(SHVALUEArray[k].equals("NO2_1hr")) {
+							try{
+								NO2 = Float.parseFloat(SHVALUEArray[k+1]);
+							} catch(NumberFormatException e){
+								NO2 = -9999;
+							}
+						}
+					}
 					
 					SQL = "UPDATE airQuality SET AQI=" + AQI +
 							",time='" + SHAQIArray[SHAQIArray.length - 1].toString() + "'" + "," +
 							"station='" + SHStation[i] + "'" + "," +
 							"quality='" + SHAQIArray[SHAQIArray.length - 3].toString()  + "'" + "," +
-							"PM2_5=" + PM2_5 + " WHERE cityIndex=20 AND stationIndex=" + i;
+							"PrimaryPollutant='" + PrimaryPollutant + "'" + "," +
+							"PM2_5=" + PM2_5 + "," +
+							"PM10=" + PM10 + "," +
+							"SO2=" + SO2 + "," +
+							"NO2=" + NO2 + "," +
+							"CO=" + CO + "," +
+							"O3_1H=" + O3_1H + "," +
+							"O3_8H=" + O3_8H +
+							" WHERE cityIndex=20 AND stationIndex=" + i;
 				}
 				mysql.executeSQL(SQL);
 			}
@@ -792,13 +1362,46 @@ public class airofrunning extends HttpServlet {
 		
 					for(int j = 0; j < strList.size(); j++) {
 						Integer AQI = TryParseInt(strList.get(j).getAQI().getValue());
+						PrimaryPollutant = strList.get(j).getPrimaryPollutant().getValue();
+						if (PrimaryPollutant.equals("PM2.5"))
+							PrimaryPollutant = "PM2_5";
+
 						if (AQI == null)
 							AQI = -9999;
-						float PM2_5;
 						try{
 							PM2_5 = Float.parseFloat(strList.get(j).getPM25().getValue());
 						} catch(NumberFormatException e){
 							PM2_5 = -9999;
+						}
+						try{
+							PM10 = Float.parseFloat(strList.get(j).getPM10().getValue());
+						} catch(NumberFormatException e){
+							PM10 = -9999;
+						}
+						try{
+							SO2 = Float.parseFloat(strList.get(j).getSO2().getValue());
+						} catch(NumberFormatException e){
+							SO2 = -9999;
+						}
+						try{
+							NO2 = Float.parseFloat(strList.get(j).getNO2().getValue());
+						} catch(NumberFormatException e){
+							NO2 = -9999;
+						}
+						try{
+							CO = Float.parseFloat(strList.get(j).getCO().getValue());
+						} catch(NumberFormatException e){
+							CO = -9999;
+						}
+						try{
+							O3_1H = Float.parseFloat(strList.get(j).getO3().getValue());
+						} catch(NumberFormatException e){
+							O3_1H = -9999;
+						}
+						try{
+							O3_8H = Float.parseFloat(strList.get(j).getO38H().getValue());
+						} catch(NumberFormatException e){
+							O3_8H = -9999;
 						}
 						int temp = i + 1;
 						SQL = "UPDATE airQuality SET averageAQI=" + averageAQI/count + "," +
@@ -806,7 +1409,15 @@ public class airofrunning extends HttpServlet {
 								",time='" + strList.get(j).getTimePoint().toString().split("T")[1] + "'" + "," +
 								"station='" + strList.get(j).getPositionName().getValue() + "'" + "," +
 								"quality='" + strList.get(j).getQuality().getValue()  + "'" + "," +
-								"PM2_5=" + PM2_5 + " WHERE cityIndex=" + temp + " AND stationIndex=" + j;
+								"PrimaryPollutant='" + PrimaryPollutant + "'" + "," +
+								"PM2_5=" + PM2_5 + "," +
+								"PM10=" + PM10 + "," +
+								"SO2=" + SO2 + "," +
+								"NO2=" + NO2 + "," +
+								"CO=" + CO + "," +
+								"O3_1H=" + O3_1H + "," +
+								"O3_8H=" + O3_8H +
+								" WHERE cityIndex=" + temp + " AND stationIndex=" + j;
 						
 						mysql.executeSQL(SQL);
 					}
@@ -824,8 +1435,11 @@ public class airofrunning extends HttpServlet {
 			}
 			else {
 				JSONObject jsonObjUSAQI = new JSONObject(USAQI);
+				Integer AQI = TryParseInt(jsonObjUSAQI.getString("aqi"));
+				if (AQI == null)
+					AQI = -9999;
 				SQL = "UPDATE airQuality SET USAQIVALUE=" +
-						Integer.valueOf(jsonObjUSAQI.getString("aqi")) + ",USAQITIME='" + 
+						AQI + ",USAQITIME='" +
 						jsonObjUSAQI.getJSONObject("time").getString("u").split(" ")[1] + "'" + 
 						"WHERE area='北京'";
 				mysql.executeSQL(SQL);
@@ -836,8 +1450,11 @@ public class airofrunning extends HttpServlet {
 			}
 			else {
 				JSONObject jsonObjUSAQI = new JSONObject(USAQI);
+				Integer AQI = TryParseInt(jsonObjUSAQI.getString("aqi"));
+				if (AQI == null)
+					AQI = -9999;
 				SQL = "UPDATE airQuality SET USAQIVALUE=" +
-						Integer.valueOf(jsonObjUSAQI.getString("aqi")) + ",USAQITIME='" + 
+						AQI + ",USAQITIME='" +
 						jsonObjUSAQI.getJSONObject("time").getString("u").split(" ")[1] + "'" + 
 						"WHERE area='上海'";
 				mysql.executeSQL(SQL);
@@ -848,8 +1465,11 @@ public class airofrunning extends HttpServlet {
 			}
 			else {
 				JSONObject jsonObjUSAQI = new JSONObject(USAQI);
+				Integer AQI = TryParseInt(jsonObjUSAQI.getString("aqi"));
+				if (AQI == null)
+					AQI = -9999;
 				SQL = "UPDATE airQuality SET USAQIVALUE=" +
-						Integer.valueOf(jsonObjUSAQI.getString("aqi")) + ",USAQITIME='" + 
+						AQI + ",USAQITIME='" +
 						jsonObjUSAQI.getJSONObject("time").getString("u").split(" ")[1] + "'" + 
 						"WHERE area='广州'";
 				mysql.executeSQL(SQL);
@@ -860,8 +1480,11 @@ public class airofrunning extends HttpServlet {
 			}
 			else {
 				JSONObject jsonObjUSAQI = new JSONObject(USAQI);
+				Integer AQI = TryParseInt(jsonObjUSAQI.getString("aqi"));
+				if (AQI == null)
+					AQI = -9999;
 				SQL = "UPDATE airQuality SET USAQIVALUE=" +
-						Integer.valueOf(jsonObjUSAQI.getString("aqi")) + ",USAQITIME='" + 
+						AQI + ",USAQITIME='" +
 						jsonObjUSAQI.getJSONObject("time").getString("u").split(" ")[1] + "'" + 
 						"WHERE area='成都'";
 				mysql.executeSQL(SQL);
@@ -926,9 +1549,9 @@ public class airofrunning extends HttpServlet {
 		Long intervalTime = Long.parseLong(getInitParameter("intervalTime"));
 		mysqlService mysql = new mysqlService();
 		try {
-			//mysql.dropTable();
-			//mysql.createTable();
-			//initDatabase();
+//			mysql.dropTable();
+//			mysql.createTable();
+//			initDatabase();
 		}
 		catch(Exception e) {
 			System.out.println(e.toString());
