@@ -47,7 +47,7 @@ public class mysqlService {
 					  "time varchar(20)," +
 					  "station varchar(40)," +
 					  "quality varchar(20)," +
-					  "PrimaryPollutant varchar(20)," +
+					  "PrimaryPollutant varchar(100)," +
 					  "PM2_5 float(10,3), " +
 					  "PM10 float(10,3), " +
 					  "SO2 float(10,3), " +
