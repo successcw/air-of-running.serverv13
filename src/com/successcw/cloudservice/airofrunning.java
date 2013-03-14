@@ -848,12 +848,12 @@ public class airofrunning extends HttpServlet {
 							CO = -9999;
 						}
 						try{
-							O3_1H = Float.parseFloat(strList.get(j).getO3().getValue());
+							O3_1H = Float.parseFloat(strList.get(j).getO324H().getValue());
 						} catch(NumberFormatException e){
 							O3_1H = -9999;
 						}
 						try{
-							O3_8H = Float.parseFloat(strList.get(j).getO38H().getValue());
+							O3_8H = Float.parseFloat(strList.get(j).getO38H24H().getValue());
 						} catch(NumberFormatException e){
 							O3_8H = -9999;
 						}
@@ -1261,9 +1261,12 @@ public class airofrunning extends HttpServlet {
 					String []SHAQIArray = SHAQI.split(" ");
 					SHVALUE = SHVALUE.replace("$", " ").replace("#", " ").replace("*"," ");
 					String []SHVALUEArray = SHVALUE.split(" ");
-					PrimaryPollutant = SHAQIArray[15];
-					if (PrimaryPollutant.equals("PM2.5"))
-						PrimaryPollutant = "PM2_5";
+
+					PrimaryPollutant = "-9999";
+					//这里写成15会有问题，有时候服务器发过来的数据没有这么长
+//					PrimaryPollutant = SHAQIArray[15];
+//					if (PrimaryPollutant.equals("PM2.5"))
+//						PrimaryPollutant = "PM2_5";
 					
 					PM2_5 = -9999;
 					PM10 = -9999;
@@ -1394,12 +1397,12 @@ public class airofrunning extends HttpServlet {
 							CO = -9999;
 						}
 						try{
-							O3_1H = Float.parseFloat(strList.get(j).getO3().getValue());
+							O3_1H = Float.parseFloat(strList.get(j).getO324H().getValue());
 						} catch(NumberFormatException e){
 							O3_1H = -9999;
 						}
 						try{
-							O3_8H = Float.parseFloat(strList.get(j).getO38H().getValue());
+							O3_8H = Float.parseFloat(strList.get(j).getO38H24H().getValue());
 						} catch(NumberFormatException e){
 							O3_8H = -9999;
 						}
