@@ -1352,18 +1352,18 @@ public class airofrunning extends HttpServlet {
 			try {
 				InputStream is = this.getClass().getClassLoader()
 						.getResourceAsStream("../station");
-				BufferedReader streamReader = new BufferedReader(new InputStreamReader(is, "UTF-8"));
+				BufferedReader streamReader = new BufferedReader(new InputStreamReader(is, "UTF-8")); 
 				responseStrBuilder = new StringBuilder();
 				String inputStr;
-
+				
 				while ((inputStr = streamReader.readLine()) != null) {
-					//System.out.print(inputStr);
+		    		//System.out.print(inputStr);
 					responseStrBuilder.append(inputStr);
 				}
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
-
+			
 			for (int i = 0; i < city.length; i++) {
 				if(i == 0 || i == 19) {
 					//nothing here
@@ -1371,37 +1371,37 @@ public class airofrunning extends HttpServlet {
 				else {
 			        try{
 						DataSetList result = emcClient.getAQIByCityName(city[i]);
-
+						
 						JSONObject json = new JSONObject(responseStrBuilder.toString());
 						province = json.getJSONArray("provinces");
 						for(temp_i = 0; temp_i < province.length(); temp_i++) {
-							cityJson = province.getJSONObject(temp_i).getJSONArray("cities");
-							for(temp_j = 0; temp_j < cityJson.length(); temp_j++){
-								if(cityJson.getJSONObject(temp_j).getString("name").equals(city[i])) {
-									flag = 1;
-									break;
-								}
-							}
-							if(flag == 1) {
-								flag = 0;
-								break;
-							}
-						}
-						station = cityJson.getJSONObject(temp_j).getJSONArray("stations");
-						System.out.print("cityJson=" + cityJson.getJSONObject(temp_j).getString("name"));
-						System.out.print("station=" + station.length());
-						
-						for(temp_i = 0; temp_i < station.length(); temp_i++) {
-							for(temp_j = 1; temp_j < result.nameList.size(); temp_j=temp_j+12) {
-								if(station.getJSONObject(temp_i).getString("name").equals(result.valueList.get(temp_j))) {
-									Integer AQI = TryParseInt(result.valueList.get(temp_j+1));
+				    		cityJson = province.getJSONObject(temp_i).getJSONArray("cities");
+				    		for(temp_j = 0; temp_j < cityJson.length(); temp_j++){
+				    			if(cityJson.getJSONObject(temp_j).getString("name").equals(city[i])) {
+				    				flag = 1;
+				    				break;
+				    			}
+				    		}
+				    		if(flag == 1) {
+				    			flag = 0;
+				    			break;
+				    		}  			
+				    	}
+				    	station = cityJson.getJSONObject(temp_j).getJSONArray("stations");
+				    	System.out.print("cityJson=" + cityJson.getJSONObject(temp_j).getString("name"));
+				    	System.out.print("station=" + station.length());
+				    	
+				    	for(temp_i = 0; temp_i < station.length(); temp_i++) {
+				    		for(temp_j = 1; temp_j < result.nameList.size(); temp_j=temp_j+12) {
+				    			if(station.getJSONObject(temp_i).getString("name").equals(result.valueList.get(temp_j))) {
+				    				Integer AQI = TryParseInt(result.valueList.get(temp_j+1));
 									if (AQI == null)
 										AQI = -9999;
 									else {
 										averageAQI += AQI;
 										count++;
 									}
-									PrimaryPollutant = "-9999";
+									PrimaryPollutant = "-9999";						
 									PM2_5 = -9999;
 									PM10 = -9999;
 									O3_1H = -9999;
@@ -1459,13 +1459,14 @@ public class airofrunning extends HttpServlet {
 											"O3_1H=" + O3_1H + "," +
 											"O3_8H=" + O3_8H +
 											" WHERE cityIndex=" + temp + " AND stationIndex=" + temp_i;
-
+									
 									mysql.executeSQL(SQL);
 //				    				System.out.print(result.nameList.get(temp_j)+"    ");
 //				    	        	System.out.println(result.valueList.get(temp_j));
-								}
+				    			}			    			
 					        }
-						}
+				    		
+				    	}
 					}catch(Exception e){
 						e.printStackTrace();
 					}

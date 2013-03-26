@@ -20,7 +20,7 @@
 		<init-param>
 			<!-- // 缓冲时间  ss-->
 			<param-name>intervalTime</param-name>
-			<param-value>600</param-value>
+			<param-value>1800</param-value>
 		</init-param>
 		<load-on-startup>10</load-on-startup>
   </servlet>

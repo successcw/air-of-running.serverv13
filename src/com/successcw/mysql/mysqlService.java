@@ -150,10 +150,10 @@ public class mysqlService {
   }
   public void executeSQL(String SQL) throws Exception {
 
-	  //System.out.print("excute SQL");
+	  System.out.print("excute SQL");
 	  //System.out.println(SQL);
 	  SQL = new String(SQL.getBytes(),"UTF-8");
-	  //System.out.println(SQL);
+	  System.out.println(SQL);
 	  
 	  try{
 		  Class.forName(driverName).newInstance();
@@ -161,7 +161,7 @@ public class mysqlService {
 		  try{
 			  Statement st = connect.createStatement();
 			  st.executeUpdate(SQL);
-			  //System.out.println("SQL process successfully!");
+			  System.out.println("SQL process successfully!");
 		  }
 		  catch(SQLException s){
 			  System.out.println(s.toString());
