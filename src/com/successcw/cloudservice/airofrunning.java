@@ -12,7 +12,6 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.Timer;
 
-import javax.servlet.ServletContext;
 import javax.servlet.ServletOutputStream;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -332,8 +331,8 @@ public class airofrunning extends HttpServlet {
 			resp.setContentType("text/html");
 			resp.setCharacterEncoding("utf-8");
 		    PrintWriter out = resp.getWriter();
-		    out.print("{\"versionCode\":\"5\",\"versionName\":\"1.4\",\"contents\":\"" +
-					"1. 给出更自信的建议，全部按照美国标准给出空气污染数据;2.修正PM2.5为空的时候的显示问题;3. 添加详细的污染数据;\"}");
+		    out.print("{\"versionCode\":\"7\",\"versionName\":\"1.6\",\"contents\":\"" +
+					"1. 采用美国2013年最新标准值;2.美国数据计算错误，中国发布的数据单位为ug/m3,美国计算公式的单位为ppb,需要做一个换算;3. 修正单位信息（中国所有污染物应该为微克/m3）;\"}");
 		} else if(req.getParameter("download") != null){
 			
 			 //写流文件到前端浏览器
